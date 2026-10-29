@@ -5,7 +5,6 @@ import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import {
   cancelDeferred,
-  updateDeferred,
   clearSettled,
   listDeferred,
   listSessions,
@@ -15,6 +14,7 @@ import {
 } from "../shared/defer";
 import { DeferComposer, DeferredRow, PillSetting, deferStyles } from "./composer";
 import { notifyDeferChanged } from "./refresh";
+import { useSendNow } from "./send-now";
 import { formatRelative, formatResetLabel, stateLabel, stateTone } from "../shared/format";
 
 const FILTER_THRESHOLD = 6;
@@ -36,7 +36,6 @@ export function DeferOverview({ theme, layout, navigation }: PluginSurfaceProps)
   const list = useRpc(listDeferred);
   const sessions = useRpc(listSessions);
   const cancel = useRpc(cancelDeferred);
-  const update = useRpc(updateDeferred);
   const clear = useRpc(clearSettled);
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -61,6 +60,7 @@ export function DeferOverview({ theme, layout, navigation }: PluginSurfaceProps)
     notifyDeferChanged();
     return queryClient.invalidateQueries({ queryKey });
   };
+  const send = useSendNow(invalidate);
   const styles = useMemo(() => deferStyles(theme, layout), [theme, layout]);
 
   const items = queue.data?.items ?? [];
@@ -89,16 +89,6 @@ export function DeferOverview({ theme, layout, navigation }: PluginSurfaceProps)
     return session === undefined
       ? `unknown session ${agentId.slice(0, 8)}`
       : sessionTitle(session);
-  }
-
-  function onSendNow(item: Deferred) {
-    void update({ id: item.id, trigger: { kind: "at", iso: new Date().toISOString() } })
-      .then((result) => {
-        if (result.item === null) throw new Error(result.error ?? "Could not send this deferred message.");
-        toast.show("Sending now");
-        return invalidate();
-      })
-      .catch((error: unknown) => toast.error(error instanceof Error ? error.message : String(error)));
   }
 
   function onCancel(item: Deferred) {
@@ -213,7 +203,8 @@ export function DeferOverview({ theme, layout, navigation }: PluginSurfaceProps)
             setTargetId(target.agentId);
             setEditingId(target.id);
           }}
-          onSendNow={onSendNow}
+          onSendNow={send.sendNow}
+          scheduling={send.isPending(item.id)}
           onCancel={onCancel}
           onOpenSession={openSession}
         />

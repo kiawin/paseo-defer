@@ -539,7 +539,7 @@ try {
   // in-flight row offers no way to jump the queue.
   const sendNowLabel = "Send this deferred message now";
   const sent = [];
-  const rowFor = (state) =>
+  const rowFor = (state, extra = {}) =>
     ui.graph.DeferredRow({
       styles: ui.graph.deferStyles(THEME, { compact: false, platform: "web" }),
       item: { id: "row-1", text: "later", state },
@@ -548,12 +548,25 @@ try {
       onEdit: () => {},
       onSendNow: (item) => sent.push(item.id),
       onCancel: () => {},
+      ...extra,
     });
   const rowButton = (state) => [...walk(rowFor(state))].find((node) => node?.props?.accessibilityLabel === sendNowLabel);
   rowButton("pending")?.props.onPress();
   check(sent.join() === "row-1", "Send now on a waiting row hands that row up");
   check(rowButton("sending") === undefined, "an in-flight row offers no Send now");
   check(rowButton("sent") === undefined, "a settled row offers no Send now");
+  for (const extra of [{ editing: true }, { scheduling: true }]) {
+    const row = [...walk(rowFor("pending", extra))];
+    const send = row.find(node => node?.props?.accessibilityLabel === sendNowLabel);
+    check(send?.props.disabled === true, "Send now waits for edits or an in-flight schedule");
+    if (extra.scheduling) {
+      check(JSON.stringify(send).includes("Scheduling…"), "pending scheduling has accurate feedback");
+      for (const label of ["Edit this deferred message", "Cancel this deferred message"]) {
+        check(row.find(node => node?.props?.accessibilityLabel === label)?.props.disabled === true, "conflicting row actions wait for scheduling");
+      }
+    }
+  }
+
 } catch (error) {
   failures.push(error instanceof Error ? (error.stack ?? error.message) : String(error));
 }

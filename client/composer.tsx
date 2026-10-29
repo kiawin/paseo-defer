@@ -142,6 +142,7 @@ export function deferStyles(theme: PluginTheme, layout: Layout) {
     item: { borderTopWidth: 1, borderTopColor: theme.colors.border, paddingVertical: 10, gap: 4 },
     itemText: { color: theme.colors.foreground, fontSize: 13 },
     itemMeta: { color: theme.colors.foregroundMuted, fontSize: 11 },
+    action: { minHeight: 44, paddingHorizontal: 8, justifyContent: "center" as const },
     link: { color: theme.colors.foregroundMuted, fontSize: 11, textDecorationLine: "underline" as const },
     tone: {
       muted: { color: theme.colors.foregroundMuted, fontSize: 11 },
@@ -553,13 +554,14 @@ export interface DeferredRowProps {
   editing: boolean;
   onEdit(item: Deferred): void;
   onSendNow(item: Deferred): void;
+  scheduling?: boolean;
   onCancel(item: Deferred): void;
   /** Omitted where the view is already inside the target session, or where the
    * host is too old to expose navigation. */
   onOpenSession?: ((item: Deferred) => void) | undefined;
 }
 
-/** One waiting message, with the edit and cancel affordances. */
+/** One waiting message, with guarded scheduling and editing actions. */
 export function DeferredRow({
   styles,
   item,
@@ -567,6 +569,7 @@ export function DeferredRow({
   editing,
   onEdit,
   onSendNow,
+  scheduling = false,
   onCancel,
   onOpenSession,
 }: DeferredRowProps) {
@@ -584,6 +587,8 @@ export function DeferredRow({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Edit this deferred message"
+              disabled={scheduling}
+              style={styles.action}
               onPress={() => onEdit(item)}
             >
               <Text style={styles.link}>Edit</Text>
@@ -594,14 +599,19 @@ export function DeferredRow({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Send this deferred message now"
+            accessibilityHint={editing ? "Save or cancel your edits before sending" : "Delivery waits until the session is idle"}
+            disabled={scheduling || editing}
+            style={styles.action}
             onPress={() => onSendNow(item)}
           >
-            <Text style={styles.link}>Send now</Text>
+            <Text style={[styles.link, { opacity: scheduling || editing ? 0.5 : 1 }]}>{scheduling ? "Scheduling…" : "Send now"}</Text>
           </Pressable>
         ) : null}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Cancel this deferred message"
+          disabled={scheduling || item.state !== "pending"}
+          style={styles.action}
           onPress={() => onCancel(item)}
         >
           <Text style={styles.link}>Cancel</Text>
@@ -610,6 +620,7 @@ export function DeferredRow({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Open the session this message will land in"
+            style={styles.action}
             onPress={() => onOpenSession(item)}
           >
             <Text style={styles.link}>Open session</Text>

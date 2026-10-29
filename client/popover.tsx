@@ -4,10 +4,11 @@ import { useToast } from "@getpaseo/plugin/client/react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
-import { cancelDeferred, listDeferred, updateDeferred, type Deferred } from "../shared/defer";
+import { cancelDeferred, listDeferred, type Deferred } from "../shared/defer";
 import { DeferComposer, DeferredRow, deferStyles } from "./composer";
 import { offerComposerDraft } from "./handoff";
 import { notifyDeferChanged } from "./refresh";
+import { useSendNow } from "./send-now";
 import { queuedLabel, stateLabel } from "../shared/format";
 
 /**
@@ -36,7 +37,6 @@ interface DeferPopoverBodyProps {
 function DeferPopoverBody({ theme, layout, agentId, close }: DeferPopoverBodyProps) {
   const list = useRpc(listDeferred);
   const cancel = useRpc(cancelDeferred);
-  const update = useRpc(updateDeferred);
   const toast = useToast();
   const queryClient = useQueryClient();
   const queryKey = ["defer-popover", agentId];
@@ -62,21 +62,12 @@ function DeferPopoverBody({ theme, layout, agentId, close }: DeferPopoverBodyPro
     notifyDeferChanged();
     return queryClient.invalidateQueries({ queryKey });
   };
+  const send = useSendNow(invalidate);
   const styles = useMemo(() => deferStyles(theme, layout), [theme, layout]);
 
   const items = queue.data?.items ?? [];
   const pending = items.filter((item) => item.state === "pending" || item.state === "sending");
   const editing = pending.find((item) => item.id === editingId) ?? null;
-
-  function onSendNow(item: Deferred) {
-    void update({ id: item.id, trigger: { kind: "at", iso: new Date().toISOString() } })
-      .then((result) => {
-        if (result.item === null) throw new Error(result.error ?? "Could not send this deferred message.");
-        toast.show("Sending now");
-        return invalidate();
-      })
-      .catch((error: unknown) => toast.error(error instanceof Error ? error.message : String(error)));
-  }
 
   function onCancel(item: Deferred) {
     if (editingId === item.id) setEditingId(null);
@@ -107,8 +98,9 @@ function DeferPopoverBody({ theme, layout, agentId, close }: DeferPopoverBodyPro
               meta={stateLabel(item)}
               editing={editingId === item.id}
               onEdit={(target) => setEditingId(target.id)}
-              onSendNow={onSendNow}
-          onCancel={onCancel}
+              onSendNow={send.sendNow}
+              scheduling={send.isPending(item.id)}
+              onCancel={onCancel}
             />
           ))}
         </View>

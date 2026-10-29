@@ -3,9 +3,10 @@ import { useRpc } from "@getpaseo/plugin/client";
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { deleteDeferred, listDeferred, updateDeferred, type Deferred } from "../shared/defer";
+import { deleteDeferred, listDeferred, type Deferred } from "../shared/defer";
 import { DeferComposer, deferStyles } from "./composer";
 import { notifyDeferChanged } from "./refresh";
+import { useSendNow } from "./send-now";
 import { formatClock } from "../shared/format";
 import { DEFER_TIMELINE_KIND, DeferTimelineSchema, type DeferTimelineData } from "../shared/timeline";
 
@@ -16,14 +17,15 @@ function deliveryTime(iso: string): string {
 export function DeferredMessage({ item, theme, layout, agentId }: PluginTimelineItemProps<DeferTimelineData>) {
   const list = useRpc(listDeferred);
   const remove = useRpc(deleteDeferred);
-  const update = useRpc(updateDeferred);
   const [editing, setEditing] = useState<Deferred | null>(null);
   const [usage, setUsage] = useState<{ sessionResetsAt: string | null; usageError: string | null }>({ sessionResetsAt: null, usageError: null });
-  const [action, setAction] = useState<"loading" | "deleting" | "sending" | null>(null);
+  const [action, setAction] = useState<"loading" | "deleting" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const send = useSendNow(notifyDeferChanged, setError);
   const data = item.data;
   if (data.state === "settled") return null;
   const messageId = data.id;
+  const busy = action !== null || send.isPending(messageId);
   async function edit() {
     setError(null); setAction("loading");
     try {
@@ -40,15 +42,6 @@ export function DeferredMessage({ item, theme, layout, agentId }: PluginTimeline
       const result = await remove({ id: messageId });
       if (!result.ok) throw new Error(result.error ?? "Could not delete this deferred message.");
       setEditing(null); notifyDeferChanged();
-    } catch (error) { setError(error instanceof Error ? error.message : String(error)); }
-    finally { setAction(null); }
-  }
-  async function sendNow() {
-    setError(null); setAction("sending");
-    try {
-      const result = await update({ id: messageId, trigger: { kind: "at", iso: new Date().toISOString() } });
-      if (result.item === null) throw new Error(result.error ?? "Could not send this deferred message.");
-      notifyDeferChanged();
     } catch (error) { setError(error instanceof Error ? error.message : String(error)); }
     finally { setAction(null); }
   }
@@ -73,20 +66,21 @@ export function DeferredMessage({ item, theme, layout, agentId }: PluginTimeline
       ) : (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           {data.state === "pending" ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Edit deferred message" disabled={action !== null}
-              onPress={() => void edit()} style={{ paddingVertical: 10, paddingHorizontal: 12, opacity: action !== null ? 0.5 : 1 }}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Edit deferred message" disabled={busy}
+              onPress={() => void edit()} style={{ minHeight: 44, justifyContent: "center", paddingVertical: 10, paddingHorizontal: 12, opacity: busy ? 0.5 : 1 }}>
               <Text style={{ color: theme.colors.foreground, fontSize: 13 }}>{action === "loading" ? "Loading…" : "Edit"}</Text>
             </Pressable>
           ) : null}
           {data.state === "pending" ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Send deferred message now" disabled={action !== null}
-              onPress={() => void sendNow()} style={{ paddingVertical: 10, paddingHorizontal: 12, opacity: action !== null ? 0.5 : 1 }}>
-              <Text style={{ color: theme.colors.foreground, fontSize: 13 }}>{action === "sending" ? "Sending…" : "Send now"}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Send deferred message now" disabled={busy}
+              accessibilityHint="Delivery waits until the session is idle"
+              onPress={() => { if (!busy) void send.sendNow({ id: messageId, state: "pending" }); }} style={{ minHeight: 44, justifyContent: "center", paddingVertical: 10, paddingHorizontal: 12, opacity: busy ? 0.5 : 1 }}>
+              <Text style={{ color: theme.colors.foreground, fontSize: 13 }}>{send.isPending(messageId) ? "Scheduling…" : "Send now"}</Text>
             </Pressable>
           ) : null}
           {data.state !== "sending" ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Delete deferred message" disabled={action !== null}
-              onPress={() => void deleteMessage()} style={{ paddingVertical: 10, paddingHorizontal: 12, opacity: action !== null ? 0.5 : 1 }}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Delete deferred message" disabled={busy}
+              onPress={() => void deleteMessage()} style={{ minHeight: 44, justifyContent: "center", paddingVertical: 10, paddingHorizontal: 12, opacity: busy ? 0.5 : 1 }}>
               <Text style={{ color: theme.colors.statusDanger, fontSize: 13 }}>{action === "deleting" ? "Deleting…" : "Delete"}</Text>
             </Pressable>
           ) : null}
