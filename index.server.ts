@@ -1,3 +1,4 @@
+import { contributeAgentTools } from "./server/native-tools";
 import { displayPreferences } from "./shared/display";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import {
@@ -22,6 +23,10 @@ import { lifecycle } from "./shared/lifecycle";
 export default function contribute(server: PluginServerContext) {
   const labels = new WorkspaceLabels(dataDir(), () => store.list(), withDaemon);
   const timeline = new DeferredTimeline(dataDir(), () => store.list());
+  const removeTools = contributeAgentTools(server, async paseo => {
+    void labels.refresh();
+    await timeline.use(paseo);
+  });
   lifecycle.refreshLabels = () => labels.refresh();
   lifecycle.refreshTimeline = () => timeline.refresh();
   const removeStarted = server.on("agent.turn_started", (_, { paseo }) => timeline.use(paseo));
@@ -95,6 +100,7 @@ export default function contribute(server: PluginServerContext) {
     lifecycle.teardown = null;
     lifecycle.refreshLabels = null;
     lifecycle.refreshTimeline = null;
+    removeTools();
     removeStarted();
     removeEnded();
     await teardown?.();
