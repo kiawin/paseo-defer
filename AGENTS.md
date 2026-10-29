@@ -2,8 +2,8 @@
 
 ## Project
 
-- This is the trusted, unsandboxed Paseo plugin `paseo-defer`; minimum supported Paseo is 0.10.1.
-- Check the current plugin docs at `https://paseo.sh/docs/plugins.md` and `https://paseo.sh/docs/plugins/v0.8/reference.md` before changing runtime code.
+- This is the trusted, unsandboxed Paseo plugin `paseo-defer`; minimum supported Paseo is 0.14.0.
+- Check the current plugin docs at `https://paseo.sh/docs/plugins.md` and `https://paseo.sh/docs/plugins/reference.md` before changing runtime code.
 - Never commit credentials, queued messages, daemon configuration, logs, or local paths.
 
 ## Code boundaries

@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/paseo-defer?style=for-the-badge&color=cb3837)](https://www.npmjs.com/package/paseo-defer)
 [![npm downloads](https://img.shields.io/npm/dm/paseo-defer?style=for-the-badge&color=cb3837)](https://www.npmjs.com/package/paseo-defer)
-[![Paseo](https://img.shields.io/badge/Paseo-%E2%89%A5%200.10.1-8A63D2?style=for-the-badge)](https://paseo.sh)
+[![Paseo](https://img.shields.io/badge/Paseo-%E2%89%A5%200.14.0-8A63D2?style=for-the-badge)](https://paseo.sh)
 [![License](https://img.shields.io/github/license/tomgrin10/paseo-defer?style=for-the-badge&color=2563eb)](LICENSE)
 
 Queue a message for a later time or your agent's usage-window reset.
@@ -20,7 +20,7 @@ paseo plugin install paseo-defer
 For Git installs:
 
 ```sh
-paseo plugin add https://github.com/tomgrin10/paseo-defer.git --ref v2.4.0
+paseo plugin add https://github.com/tomgrin10/paseo-defer.git --ref v3.0.0
 ```
 
 Update with `paseo plugin update paseo-defer`.
@@ -53,7 +53,7 @@ On desktop and web, opening Defer copies your composer draft. Clear the original
 
 Under **Composer pill**, choose **Only when waiting** to hide the pill when the queue is empty.
 
-On Paseo 0.10.1+, hide the sidebar entry in **Settings → Plugins → Defer → Display**; Command Center access stays available after opening a workspace or plugin on that host.
+On Paseo 0.14.0+, hide the sidebar entry in **Settings → Plugins → Defer → Display**; Command Center access stays available after opening a workspace or plugin on that host.
 
 ## Data and access
 
@@ -77,6 +77,22 @@ After changes, run `npm run verify` and `paseo plugin reload paseo-defer`.
 
 [MIT](LICENSE) © 2026 Tom Gringauz.
 
+## Navigation and display
+
+Open this plugin from Command-K or its sidebar entry. **Overview** and **Display settings** link the main view and settings directly, without opening the Plugins settings page. Hiding a sidebar entry keeps Command-K available.
+
+Display settings can also hide this plugin's workspace header or composer buttons independently. Hidden buttons stay hidden for newly opened workspaces; restoring them retains the latest button status.
+
+## Paseo 0.14 agent integration
+
+`defer_list_messages` reads the calling agent’s active queue. `defer_schedule_message` schedules requested follow-up work for that same agent and returns a compact receipt; it cannot target another agent.
+
+Requires Paseo **0.14.0 or newer**. Agent tools are scoped to interactive Claude
+and Codex sessions; history-only opens receive none. They become available on
+the next idle session open after install or reload. The agent label
+`plugin-tools/enabled: "false"` opts a session out. Existing plugin data and
+settings are retained.
+
 ## Other plugins
 
 - [Graphite](https://github.com/tomgrin10/paseo-graphite) — Graphite stacks and PR status.
@@ -87,3 +103,5 @@ After changes, run `npm run verify` and `paseo plugin reload paseo-defer`.
 - [Transcript Search](https://github.com/tomgrin10/paseo-transcript-search) — Search conversations across connected hosts.
 - [Send to Paseo](https://github.com/tomgrin10/send-to-paseo) — Send GitHub and Graphite PRs to Paseo from Chrome.
 - [Dispatch](https://github.com/tomgrin10/paseo-dispatch) — Route tasks to existing workspaces (development preview).
+
+- [Follow-up](https://github.com/tomgrin10/paseo-follow-up) — Track workspace PRs, remaining tasks and completion.
